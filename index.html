@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Platformer</title>
+    <style>
+        /* CSS STYLES */
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333;
+            height: 100vh;
+        }
+
+        #game-container {
+            width: 800px;
+            height: 600px;
+            background-color: #D3D3D3; /* Light grey background like the image */
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #000;
+        }
+
+        /* Player */
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #0077B6; /* Blue circle */
+            border-radius: 50%;
+            left: 20px;
+            top: 60px; /* Starting position near the top-left */
+            transition: top 0.1s, left 0.1s; /* Smooth movement */
+        }
+
+        /* The white/light blue inner circles (eyes/details) */
+        #player::before,
+        #player::after {
+            content: '';
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+        }
+
+        #player::before {
+            width: 10px;
+            height: 10px;
+            top: 10px;
+            left: 10px;
+        }
+
+        #player::after {
+            width: 5px;
+            height: 5px;
+            top: 20px;
+            left: 25px;
+        }
+
+        /* Ground and Ceiling */
+        .platform {
+            position: absolute;
+            width: 100%;
+            height: 40px;
+            background-color: #696969; /* Dark grey like the image */
+        }
+
+        #ceiling {
+            top: 0;
+            left: 0;
+        }
+
+        #ground {
+            bottom: 0;
+            left: 0;
+        }
+
+        /* Spikes (Triangles) */
+        .spike {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            /* Triangles are inverted for the top set */
+            border-top: 20px solid #444; /* Dark grey color */
+            transform: translateY(-20px); /* Adjust to align with platform */
+        }
+
+        /* Spikes on the ceiling */
+        .spike.top {
+            border-top: none;
+            border-bottom: 20px solid #444; /* Pointing down */
+            transform: none;
+            top: 40px; /* Below the ceiling platform */
+        }
+
+        /* Rotating Obstacle (Blue Diamond) */
+        #rotating-obstacle {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: #005A8D; /* Darker blue square */
+            top: 200px;
+            left: 450px;
+            transform-origin: 50% 50%;
+            animation: rotate 4s infinite linear;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #game-over-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            display: none; /* Hidden until game over */
+            text-align: center;
+            font-family: Arial, sans-serif;
+            z-index: 10;
+        }
+
+        #game-over-message button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ceiling" class="platform"></div>
+        <div id="ground" class="platform"></div>
+
+        <div id="player"></div>
+
+        <div id="rotating-obstacle"></div>
+
+        <div class="spike" style="bottom: 40px; left: 150px;"></div>
+        <div class="spike" style="bottom: 40px; left: 190px;"></div>
+        <div class="spike" style="bottom: 40px; left: 230px;"></div>
+        <div class="spike" style="bottom: 40px; left: 270px;"></div>
+        <div class="spike" style="bottom: 40px; left: 310px;"></div>
+        <div class="spike" style="bottom: 40px; left: 350px;"></div>
+        <div class="spike" style="bottom: 40px; left: 390px;"></div>
+        <div class="spike" style="bottom: 40px; left: 430px;"></div>
+        <div class="spike" style="bottom: 40px; left: 470px;"></div>
+        <div class="spike" style="bottom: 40px; left: 510px;"></div>
+        <div class="spike" style="bottom: 40px; left: 550px;"></div>
+
+        <div class="spike top" style="left: 400px;"></div>
+        <div class="spike top" style="left: 440px;"></div>
+        <div class="spike top" style="left: 480px;"></div>
+        <div class="spike top" style="left: 520px;"></div>
+
+        <div id="game-over-message">
+            <h2>GAME OVER!</h2>
+            <p>You hit an obstacle.</p>
+            <button onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        /* JAVASCRIPT GAME LOGIC */
+
+        const player = document.getElementById('player');
+        const container = document.getElementById('game-container');
+        const gameOverMessage = document.getElementById('game-over-message');
+        let gameLoopInterval;
+        let isGameOver = false;
+
+        // Player properties
+        let playerX = 20;
+        let playerY = 60;
+        const playerSpeed = 10;
+        const playerSize = 40;
+
+        // Gravity and jumping
+        let velocityY = 0;
+        const gravity = 1.5;
+        const jumpStrength = -20; // Negative because Y-axis is inverted
+
+        // Key states
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+            ' ': false // Spacebar for jump
+        };
+
+        // --- Event Listeners for Movement ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = true;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = false;
+            }
+        });
+
+        // --- Game Logic Loop ---
+        function updateGame() {
+            if (isGameOver) return;
+
+            // 1. Apply Gravity
+            velocityY += gravity;
+            playerY += velocityY;
+
+            // 2. Horizontal Movement
+            if (keys.ArrowLeft) {
+                playerX -= playerSpeed;
+            }
+            if (keys.ArrowRight) {
+                playerX += playerSpeed;
+            }
+
+            // 3. Jumping (Only if on ground/platform - Simple platformer)
+            // The ceiling and ground platforms are 40px high.
+            const groundY = container.clientHeight - 40 - playerSize;
+            const ceilingY = 40;
+
+            // Check if player is on the ground (touching the top of the ground platform)
+            if (playerY >= groundY) {
+                playerY = groundY;
+                velocityY = 0; // Stop falling
+                if (keys.ArrowUp || keys[' ']) {
+                    velocityY = jumpStrength;
+                }
+            }
+
+            // Check if player hits the ceiling (touching the bottom of the ceiling platform)
+            if (playerY <= ceilingY) {
+                playerY = ceilingY;
+                if (velocityY < 0) { // Only stop if moving up
+                    velocityY = 0;
+                }
+            }
+
+            // 4. Boundary Checks (Left/Right Walls)
+            const maxLeft = 0;
+            const maxRight = container.clientWidth - playerSize;
+
+            if (playerX < maxLeft) playerX = maxLeft;
+            if (playerX > maxRight) playerX = maxRight;
+
+            // 5. Update Player Position on Screen
+            player.style.left = `${playerX}px`;
+            player.style.top = `${playerY}px`;
+
+            // 6. Check for Collisions
+            checkCollisions();
+        }
+
+        // --- Collision Detection ---
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+            const obstacles = document.querySelectorAll('.spike, #rotating-obstacle');
+
+            for (let obstacle of obstacles) {
+                const obstacleRect = obstacle.getBoundingClientRect();
+
+                // Simple AABB (Axis-Aligned Bounding Box) collision check
+                if (
+                    playerRect.left < obstacleRect.right &&
+                    playerRect.right > obstacleRect.left &&
+                    playerRect.top < obstacleRect.bottom &&
+                    playerRect.bottom > obstacleRect.top
+                ) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+
+        // --- Game State Functions ---
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(gameLoopInterval);
+            gameOverMessage.style.display = 'block';
+        }
+
+        window.resetGame = function() {
+            isGameOver = false;
+            gameOverMessage.style.display = 'none';
+
+            // Reset player position
+            playerX = 20;
+            playerY = 60;
+            velocityY = 0;
+
+            // Update DOM immediately
+            player.style.left = `${playerX}px`;
+            player.style.top = `${playerY}px`;
+
+            // Restart game loop
+            startGame();
+        }
+
+        function startGame() {
+            // Start the game loop at 60 FPS
+            gameLoopInterval = setInterval(updateGame, 1000 / 60);
+        }
+
+        // Start the game when the page loads
+        window.onload = startGame;
+    </script>
+</body>
+</html>
