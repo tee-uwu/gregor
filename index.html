@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Gravity Flip Game</title>
+    <title>Gravity Flip Game (Slower)</title>
     <style>
         /* CSS STYLES (Retained from the previous version for interface consistency) */
         body {
@@ -34,7 +34,7 @@
             background-color: #3498db;
             border-radius: 50%;
             left: 50px;
-            top: 50px; /* Starts near the top */
+            top: 50px;
             z-index: 5;
             box-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
             transition: background-color 0.1s;
@@ -55,7 +55,7 @@
 
         /* Visual indicator for Gravity Flipped state */
         .upward {
-            background-color: #f1c40f !important; /* Yellow when moving up */
+            background-color: #f1c40f !important;
         }
 
         /* Game Over State */
@@ -122,9 +122,9 @@
             background-color: rgba(255, 255, 255, 0.8);
             font-weight: bold;
         }
-        /* Obstacle movement */
+        /* Obstacle movement - Adjusted for slower speed */
         .horizontal-mover {
-            animation: moveHorizontal 8s infinite alternate ease-in-out;
+            animation: moveHorizontal 10s infinite alternate ease-in-out; /* Slower */
         }
 
         @keyframes moveHorizontal {
@@ -132,7 +132,7 @@
             to { transform: translateX(200px); }
         }
 
-        /* Rotating Obstacle (Blue Diamond) - Moved higher to be a central hazard */
+        /* Rotating Obstacle (Blue Diamond) */
         #rotating-obstacle {
             position: absolute;
             width: 80px;
@@ -210,7 +210,7 @@
     </div>
 
     <script>
-        /* JAVASCRIPT GAME LOGIC (GRAVITY FLIP) */
+        /* JAVASCRIPT GAME LOGIC (SLOWER GRAVITY FLIP) */
 
         const player = document.getElementById('player');
         const container = document.getElementById('game-container');
@@ -227,12 +227,11 @@
         let playerY = 50;
         const playerSize = 30;
 
-        // Physics properties
-        let gravity = 1; // Default downward gravity
-        const flipVelocity = -15; // Instant upward velocity when flipped
+        // Physics properties - ADJUSTED FOR SLOWER GAMEPLAY
+        const gravity = 0.6; // Reduced from 1 (Slower fall acceleration)
+        const flipVelocity = -12; // Reduced from -15 (Less intense flip)
         let velocityY = 0;
-        let velocityX = 0; // The ball moves forward constantly
-        const forwardSpeed = 2.5;
+        const forwardSpeed = 1.8; // Reduced from 2.5 (Slower horizontal scroll)
 
         // --- Event Listeners for Gravity Flip ---
         document.addEventListener('keydown', (e) => {
@@ -245,16 +244,13 @@
         });
 
         function flipGravity() {
-            // Give the ball an initial strong impulse in the opposite direction
+            // Apply a strong impulse in the opposite direction
             if (velocityY >= 0) {
-                // If moving down (or still), flip up
+                // Flip up
                 velocityY = flipVelocity;
                 player.classList.add('upward');
-            } else {
-                // If moving up, flip down (optional: can be used to control descent)
-                // For a simpler game, we just rely on gravity pulling it down
-                // velocityY = -flipVelocity; 
-            }
+            } 
+            // Optional: You could add logic here for more control over a downward flip too
         }
 
         // --- Game Logic Loop ---
@@ -273,13 +269,11 @@
             // 3. Constant Forward Movement (Screen Scrolling)
             const maxRight = container.clientWidth - playerSize;
             if (playerX >= maxRight) {
-                // If the player reaches the edge, reset to the left to simulate a scrolling effect
+                // Loop the player's horizontal position
                 playerX = 0;
-                // In a true scrolling game, obstacles would also be generated here, 
-                // but for this fixed-obstacle setup, we just loop the player.
             }
             
-            // Remove 'upward' class when peak is reached or falling
+            // Remove 'upward' class when falling
             if (velocityY > 0) {
                 player.classList.remove('upward');
             }
@@ -290,12 +284,12 @@
 
             if (playerY <= topBoundary) {
                 playerY = topBoundary;
-                velocityY = 0; // Stop upward movement
+                velocityY = 0;
                 player.classList.remove('upward');
             }
             if (playerY >= bottomBoundary) {
                 playerY = bottomBoundary;
-                velocityY = 0; // Stop downward movement
+                velocityY = 0;
             }
 
             // 5. Update Player Position on Screen
